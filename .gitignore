@@ -1,0 +1,61 @@
+# InvestGuard — Python Backend
+backend/__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+.env
+*.env
+*.env.local
+
+# Database
+investguard.db
+*.db
+*.sqlite3
+*.sqlite
+
+# Python Virtual Environments
+venv/
+env/
+.venv/
+.env/
+ENV/
+
+# Node.js / Frontend
+frontend/node_modules/
+frontend/.cache/
+node_modules/
+
+# Build Artifacts — Frontend
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# IDE / Editor Artifacts
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System Files
+.DS_Store
+Thumbs.db
+*.DS_Store
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+.coverage
+
+# ML Model Cache
+*.pkl
+*.joblib

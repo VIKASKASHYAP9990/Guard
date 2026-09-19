@@ -1,161 +1,281 @@
+// ============================================================
+// InvestGuard — Behavioral Alerts Center
+// Manage, review, and self-reflect on empirical behavioral signals.
+// ============================================================
+
 import React, { useState } from 'react';
-import { Alert } from '../types';
-import { Bell, AlertTriangle, CheckCircle2, Eye, XCircle, Sparkles, Filter, HelpCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  Filter,
+  CheckCircle2,
+  Trash2,
+  Brain,
+  Sparkles,
+  ShieldCheck,
+  BookOpen,
+  ArrowRight,
+  Eye,
+  Sliders,
+} from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { AlertSeverity, AlertStatus, BehavioralAlert, PatternType } from '../types';
+import { PATTERN_SHORT_NAMES } from '../content/copy';
+import { getAlertSeverityBadge } from '../lib/formatters';
+import { AIExplanationPanel } from '../components/UI/AIExplanationPanel';
 
 interface AlertsPageProps {
-  alerts: Alert[];
-  onUpdateStatus: (id: number, status: 'Unread' | 'Reviewed' | 'Dismissed') => Promise<void>;
-  onNavigate: (route: string) => void;
+  onNavigate: (page: string) => void;
 }
 
-export const AlertsPage: React.FC<AlertsPageProps> = ({ alerts, onUpdateStatus, onNavigate }) => {
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [severityFilter, setSeverityFilter] = useState<string>('ALL');
-  const [activeModalAlert, setActiveModalAlert] = useState<Alert | null>(null);
+export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigate }) => {
+  const { alerts, updateAlertStatus, dismissAlert } = useStore();
+  const [selectedAlert, setSelectedAlert] = useState<BehavioralAlert | null>(null);
+  const [statusFilter, setStatusFilter] = useState<AlertStatus | 'ALL'>('ALL');
+  const [severityFilter, setSeverityFilter] = useState<AlertSeverity | 'ALL'>('ALL');
+  const [patternFilter, setPatternFilter] = useState<PatternType | 'ALL'>('ALL');
 
-  const filteredAlerts = alerts.filter((a) => {
-    const matchStatus = statusFilter === 'ALL' || a.status === statusFilter;
-    const matchSeverity = severityFilter === 'ALL' || a.severity === severityFilter;
-    return matchStatus && matchSeverity;
+  const filteredAlerts = alerts.filter(a => {
+    if (statusFilter !== 'ALL' && a.status !== statusFilter) return false;
+    if (severityFilter !== 'ALL' && a.severity !== severityFilter) return false;
+    if (patternFilter !== 'ALL' && a.patternType !== patternFilter) return false;
+    return true;
   });
 
-  const getSeverityBadge = (sev: string) => {
-    switch (sev.toLowerCase()) {
-      case 'high':
-        return 'bg-rose-950 text-rose-300 border-rose-800';
-      case 'moderate':
-        return 'bg-amber-950 text-amber-300 border-amber-800';
-      default:
-        return 'bg-emerald-950 text-emerald-300 border-emerald-800';
-    }
+  const newCount = alerts.filter(a => a.status === 'NEW').length;
+  const reviewedCount = alerts.filter(a => a.status === 'REVIEWED').length;
+  const dismissedCount = alerts.filter(a => a.status === 'DISMISSED').length;
+
+  const handleMarkAllReviewed = () => {
+    alerts.forEach(a => {
+      if (a.status === 'NEW') {
+        updateAlertStatus(a.id, 'REVIEWED');
+      }
+    });
   };
 
   return (
-    <div className="space-y-6">
-      {/* Filters Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-        <div className="flex items-center gap-2 text-sm text-slate-300 font-semibold">
-          <Bell className="w-4 h-4 text-purple-400" />
-          <span>Smart Behavioral Alerts Center ({filteredAlerts.length})</span>
+    <div className="space-y-6 pb-12">
+      {/* Top Filter and Actions Bar */}
+      <div className="p-6 rounded-2xl glass-card space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white tracking-tight">
+                Behavioral Alerts & Reflections
+              </h2>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-semibold">
+                {alerts.length} Total Generated
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Review flagged behavioral patterns, examine the supporting data, and document your decision theses.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {newCount > 0 && (
+              <button
+                onClick={handleMarkAllReviewed}
+                className="px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Mark All ({newCount}) as Reviewed
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 text-xs">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
+        {/* Filter Controls Grid */}
+        <div className="pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Status Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Status Filter
+            </label>
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+              {(['ALL', 'NEW', 'REVIEWED', 'DISMISSED'] as const).map(st => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-all ${
+                    statusFilter === st
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {st === 'ALL' ? 'All' : st === 'NEW' ? `New (${newCount})` : st === 'REVIEWED' ? 'Reviewed' : 'Dismissed'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Severity Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Severity
+            </label>
             <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-purple-500"
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value as any)}
+              className="w-full text-xs bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
             >
-              <option value="ALL">All Statuses</option>
-              <option value="Unread">Unread</option>
-              <option value="Reviewed">Reviewed</option>
-              <option value="Dismissed">Dismissed</option>
+              <option value="ALL">All Severities</option>
+              <option value="HIGH">High Severity</option>
+              <option value="MODERATE">Moderate Severity</option>
+              <option value="LOW">Low Severity</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          {/* Pattern Type Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              Bias Pattern
+            </label>
             <select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-purple-500"
+              value={patternFilter}
+              onChange={(e) => setPatternFilter(e.target.value as any)}
+              className="w-full text-xs bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
             >
-              <option value="ALL">All Severities</option>
-              <option value="High">High Severity</option>
-              <option value="Moderate">Moderate Severity</option>
-              <option value="Low">Low Severity</option>
+              <option value="ALL">All 6 Patterns</option>
+              {Object.entries(PATTERN_SHORT_NAMES).map(([key, name]) => (
+                <option key={key} value={key}>
+                  {name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* Alerts List */}
-      <div className="space-y-4">
-        {filteredAlerts.length === 0 ? (
-          <div className="p-12 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
-            <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-white">No active alerts for selected filter</h3>
-            <p className="text-xs text-slate-400 mt-1">Your investment activity matches your default rules.</p>
-          </div>
-        ) : (
-          filteredAlerts.map((alert) => (
-            <div
-              key={alert.id}
-              className={`p-5 rounded-2xl bg-slate-900/80 border transition-all ${alert.status === 'Unread' ? 'border-purple-500/50 shadow-lg shadow-purple-950/20' : 'border-slate-800 opacity-80'}`}
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded border ${getSeverityBadge(alert.severity)}`}>
-                    {alert.severity}
+      {/* Alerts Feed */}
+      {filteredAlerts.length === 0 ? (
+        <div className="p-12 text-center glass-card rounded-2xl space-y-3">
+          <ShieldCheck className="w-12 h-12 text-emerald-400 mx-auto" />
+          <h3 className="text-base font-bold text-white">No Matching Alerts</h3>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            No behavioral alerts match your active filter criteria. Clear filters or change demo scenarios to view more.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {filteredAlerts.map(alert => {
+            const sev = getAlertSeverityBadge(alert.severity);
+            return (
+              <div
+                key={alert.id}
+                className={`p-5 rounded-2xl glass-card transition-all space-y-4 border ${
+                  alert.status === 'DISMISSED'
+                    ? 'opacity-60 border-slate-800/50'
+                    : alert.status === 'NEW'
+                    ? 'border-indigo-500/30 shadow-lg shadow-indigo-950/20'
+                    : 'border-slate-800/80'
+                }`}
+              >
+                {/* Header line */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>
+                      {sev.label}
+                    </span>
+                    <span className="text-xs font-bold text-white">
+                      {alert.title}
+                    </span>
+                    {alert.ticker && (
+                      <span className="text-xs font-mono font-bold bg-slate-800 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">
+                        {alert.ticker}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-400">
+                      • {alert.detectedAt}
+                    </span>
+                  </div>
+
+                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
+                    alert.status === 'NEW'
+                      ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
+                      : alert.status === 'REVIEWED'
+                      ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                      : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {alert.status}
                   </span>
-                  <h3 className="text-base font-bold text-white">{alert.title}</h3>
-                  <span className="text-xs text-purple-400 bg-purple-950/60 border border-purple-800/40 px-2 py-0.5 rounded">
-                    {alert.pattern_type}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-400 font-mono">
-                  {new Date(alert.created_at).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                  <strong className="text-slate-300 block mb-1">Factual Evidence:</strong>
-                  <p className="text-slate-200">{alert.evidence}</p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-purple-950/30 border border-purple-800/30">
-                  <strong className="text-purple-300 block mb-1 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                    AI Neutral Explanation:
-                  </strong>
-                  <p className="text-slate-300 leading-relaxed">{alert.description}</p>
+                {/* Evidence Content */}
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                  <div className="text-[11px] font-bold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    Observed Metric Evidence
+                  </div>
+                  <p className="text-xs text-slate-200 font-mono leading-relaxed">
+                    {alert.evidence}
+                  </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-800/30 flex items-start gap-2">
-                  <HelpCircle className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-indigo-200 block font-semibold mb-0.5">Reflection Question:</strong>
-                    <p className="text-indigo-300">{alert.reflection_question}</p>
+                {/* Reflection Question */}
+                <div className="text-xs text-slate-300 italic flex items-start gap-2">
+                  <span className="text-indigo-400 font-bold not-italic">Self-Check:</span>
+                  <span>"{alert.reflectionQuestion}"</span>
+                </div>
+
+                {/* Bottom Actions */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60">
+                  <button
+                    onClick={() => setSelectedAlert(alert)}
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  >
+                    <Brain className="w-3.5 h-3.5 text-purple-400" />
+                    Open AI Behavioral Explanation
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {alert.status !== 'REVIEWED' && (
+                      <button
+                        onClick={() => updateAlertStatus(alert.id, 'REVIEWED')}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition-all"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        Mark Reviewed
+                      </button>
+                    )}
+
+                    {alert.status !== 'DISMISSED' && (
+                      <button
+                        onClick={() => dismissAlert(alert.id)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 text-xs font-semibold transition-all"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+
+                    {alert.ticker && (
+                      <button
+                        onClick={() => onNavigate('journal')}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1 transition-all"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+                        Log Journal
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Action Buttons */}
-              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between gap-3 text-xs">
-                <span className="text-slate-400">Status: <strong className="text-slate-200">{alert.status}</strong></span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onNavigate('transactions')}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium flex items-center gap-1.5 transition"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-slate-400" />
-                    <span>View Transaction</span>
-                  </button>
-                  {alert.status === 'Unread' && (
-                    <button
-                      onClick={() => onUpdateStatus(alert.id, 'Reviewed')}
-                      className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1.5 transition"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Mark as Reviewed</span>
-                    </button>
-                  )}
-                  {alert.status !== 'Dismissed' && (
-                    <button
-                      onClick={() => onUpdateStatus(alert.id, 'Dismissed')}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-rose-300 font-medium flex items-center gap-1.5 transition"
-                    >
-                      <XCircle className="w-3.5 h-3.5" />
-                      <span>Dismiss</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      {/* AI Explanation Modal */}
+      {selectedAlert && (
+        <AIExplanationPanel
+          alert={selectedAlert}
+          onClose={() => setSelectedAlert(null)}
+          onNavigateToJournal={(ticker) => {
+            setSelectedAlert(null);
+            onNavigate('journal');
+          }}
+        />
+      )}
     </div>
   );
 };

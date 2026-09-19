@@ -1,112 +1,185 @@
+// ============================================================
+// InvestGuard — High-Converting Landing Page
+// Showcase behavioral analytics platform value proposition,
+// 6 cognitive bias detectors, and one-click demo launch.
+// ============================================================
+
 import React from 'react';
-import { Shield, Sparkles, Activity, AlertTriangle, PieChart, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
+import {
+  ShieldCheck,
+  Brain,
+  Activity,
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+  PieChart,
+  Repeat,
+  Flame,
+  Hourglass,
+  ArrowDownRight,
+  Sliders,
+  BookOpen,
+} from 'lucide-react';
+import { useStore } from '../store/useStore';
 
 interface LandingPageProps {
-  onNavigate: (route: string) => void;
-  onResetDemo: () => void;
+  onEnterApp: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onResetDemo }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
+  const { enterDemoMode } = useStore();
+
+  const handleLaunchDemo = () => {
+    enterDemoMode('DEFAULT');
+    onEnterApp();
+  };
+
+  const biases = [
+    { name: 'FOMO Buying', icon: Flame, color: 'text-amber-400', desc: 'Identifies purchases made after steep momentum run-ups.' },
+    { name: 'Overtrading', icon: Repeat, color: 'text-purple-400', desc: 'Flags hyperactive trade clustering and transaction friction.' },
+    { name: 'Concentration Risk', icon: PieChart, color: 'text-blue-400', desc: 'Warns when single positions exceed prudent portfolio limits.' },
+    { name: 'Panic Selling', icon: ArrowDownRight, color: 'text-rose-400', desc: 'Detects emotional exits during temporary market dips.' },
+    { name: 'Loss Aversion', icon: Hourglass, color: 'text-emerald-400', desc: 'Surfaces positions held through prolonged deep drawdowns.' },
+    { name: 'Market Timing', icon: Activity, color: 'text-cyan-400', desc: 'Flags rapid buy-sell reversals that destroy compound gains.' },
+  ];
+
   return (
-    <div className="min-h-screen bg-[#07111f] text-slate-100 flex flex-col justify-between">
-      {/* Top Banner */}
-      <header className="max-w-7xl mx-auto w-full px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-900/50">
-            <Shield className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-indigo-500 selection:text-white">
+      {/* Top Nav */}
+      <header className="h-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-6 lg:px-12 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <ShieldCheck className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight text-white">
-            Invest<span className="text-purple-400">Guard</span>
-          </span>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-lg text-white tracking-tight">InvestGuard</span>
+              <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                PRO
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">Behavioral Investment Intelligence</p>
+          </div>
         </div>
+
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onNavigate('dashboard')}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            onClick={handleLaunchDemo}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all group"
           >
-            EXPLORE DASHBOARD
-          </button>
-          <button
-            onClick={() => { onResetDemo(); onNavigate('dashboard'); }}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/40 transition"
-          >
-            TRY DEMO
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            <span>Launch Live Interactive Demo</span>
+            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </header>
 
       {/* Hero Section */}
-      <main className="max-w-6xl mx-auto px-6 py-12 md:py-20 text-center flex-1 flex flex-col items-center justify-center">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-950/80 border border-purple-800/60 text-purple-300 text-xs font-medium mb-8">
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-          <span>Hefty Hacks 2026 · Finance × Trading Track</span>
+      <main className="max-w-6xl mx-auto px-6 py-16 lg:py-24 space-y-20 flex-1">
+        <div className="text-center space-y-6 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
+            <Brain className="w-4 h-4 text-indigo-400" />
+            <span>Hefty Hacks 2026 • Finance × Trading Track</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight leading-[1.15]">
+            Understand your investment behavior{' '}
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              before it becomes a habit.
+            </span>
+          </h1>
+
+          <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto font-normal">
+            InvestGuard evaluates your real trading executions against 6 transparent cognitive bias detectors. Uncover evidence-based behavioral patterns with zero stock recommendations.
+          </p>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={handleLaunchDemo}
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/40 flex items-center justify-center gap-2.5 transition-all hover:scale-105"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>Explore Interactive Demo (Pre-Loaded)</span>
+            </button>
+          </div>
+
+          <div className="pt-2 flex items-center justify-center gap-6 text-xs text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5 text-emerald-400" />
+              100% Client-Side Private
+            </span>
+            <span className="flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              SEBI Compliant Framing
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-indigo-400" />
+              Deterministic Rule Engine
+            </span>
+          </div>
         </div>
 
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white max-w-4xl leading-tight">
-          Understand your investment behavior <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-indigo-300 to-emerald-400">before it becomes a habit.</span>
-        </h1>
+        {/* 6 Bias Features Grid */}
+        <div className="space-y-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-bold text-white">
+              6 Built-In Behavioral Bias Detectors
+            </h2>
+            <p className="text-xs text-slate-400 max-w-lg mx-auto">
+              Transparent, mathematical benchmarks evaluate your trading history to promote disciplined decision-making.
+            </p>
+          </div>
 
-        <p className="mt-6 text-lg md:text-xl text-slate-400 max-w-2xl font-normal leading-relaxed">
-          Analyze portfolio and transaction patterns, discover explainable behavioral signals, and review your investment decisions with greater awareness.
-        </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {biases.map((b) => {
+              const Icon = b.icon;
+              return (
+                <div
+                  key={b.name}
+                  className="p-6 rounded-2xl glass-card space-y-3 border border-slate-800/80 hover:border-indigo-500/30 transition-all"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center">
+                    <Icon className={`w-5 h-5 ${b.color}`} />
+                  </div>
+                  <h3 className="text-base font-bold text-white">{b.name}</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">{b.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-        <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
+        {/* Value Prop Banner */}
+        <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <h3 className="text-2xl font-bold text-white tracking-tight">
+              Ready to analyze your investing discipline?
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              No account creation or API credentials needed. Launch the fully simulated platform with 7 pre-scripted market scenarios immediately.
+            </p>
+          </div>
+
           <button
-            onClick={() => { onResetDemo(); onNavigate('dashboard'); }}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-base shadow-xl shadow-purple-900/50 flex items-center justify-center gap-2 transition group"
+            onClick={handleLaunchDemo}
+            className="px-6 py-3.5 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-200 transition-all shadow-xl flex-shrink-0 flex items-center gap-2"
           >
-            <span>TRY DEMO MODE</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <span>Start Simulation Now</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onNavigate('dashboard')}
-            className="w-full sm:w-auto px-8 py-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold text-base border border-slate-700/80 transition"
-          >
-            EXPLORE DASHBOARD
-          </button>
-        </div>
-
-        {/* Feature Cards Grid */}
-        <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 text-left w-full">
-          <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition">
-            <div className="w-10 h-10 rounded-xl bg-purple-950/80 border border-purple-800/50 flex items-center justify-center mb-4 text-purple-400">
-              <Activity className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Deterministic Rule Engine</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Detects 6 distinct behavioral antipatterns including FOMO-like buying, panic selling, overtrading, concentration risk, loss aversion, and market timing.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition">
-            <div className="w-10 h-10 rounded-xl bg-indigo-950/80 border border-indigo-800/50 flex items-center justify-center mb-4 text-indigo-400">
-              <Zap className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">ML Isolation Forest</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Numerical anomaly engine evaluating 10 quantitative features to isolate trade frequency spikes and baseline deviations without stock price prediction.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/30 transition">
-            <div className="w-10 h-10 rounded-xl bg-emerald-950/80 border border-emerald-800/50 flex items-center justify-center mb-4 text-emerald-400">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">AI Explanation Layer</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Translates complex trade logs into evidence-backed neutral explanations and guided reflection prompts. Zero buy/sell recommendations or emotional judgment.
-            </p>
-          </div>
-        </div>
-
-        {/* Product Principles Disclaimer */}
-        <div className="mt-12 p-4 rounded-xl bg-slate-950/60 border border-slate-800 max-w-3xl text-left flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-slate-400 leading-relaxed">
-            <strong className="text-slate-200">InvestGuard Core Principle:</strong> Non-advisory educational platform. InvestGuard never tells investors what to buy or sell, does not guarantee returns, and does not diagnose psychological conditions.
-          </div>
         </div>
       </main>
+
+      {/* Compliance Footer */}
+      <footer className="border-t border-slate-800/80 bg-slate-950 px-6 py-6 text-center text-xs text-slate-400 space-y-2">
+        <p className="max-w-4xl mx-auto text-[11px] leading-relaxed text-slate-400">
+          <strong>Compliance Disclaimer:</strong> InvestGuard is a behavioral-analytics simulation tool for educational and research purposes. It does not provide financial, trading, or investment advice. All simulated assets are fictional entities.
+        </p>
+        <p className="text-[10px] text-slate-400">
+          InvestGuard MVP • Built for Hefty Hacks 2026
+        </p>
+      </footer>
     </div>
   );
 };

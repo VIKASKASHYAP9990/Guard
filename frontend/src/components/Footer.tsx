@@ -1,25 +1,34 @@
-import React from 'react';
-import { Shield } from 'lucide-react';
+// ============================================================
+// InvestGuard — Mandatory Regulatory Compliance Footer
+// Required across all pages to ensure SEBI/FinTech compliance
+// ============================================================
 
-export const Footer: React.FC<{ onNavigate: (route: string) => void }> = ({ onNavigate }) => {
+import React from 'react';
+import { ShieldCheck, Info, Sparkles } from 'lucide-react';
+import { REGULATORY_DISCLAIMER } from '../content/copy';
+
+export const Footer: React.FC = () => {
   return (
-    <footer className="mt-16 border-t border-slate-800 bg-[#07111f] py-8 px-6 text-slate-400 text-xs">
+    <footer className="mt-auto border-t border-slate-800/80 bg-slate-950/90 backdrop-blur px-4 lg:px-8 py-6 text-xs text-slate-400">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-purple-400" />
-          <span className="font-semibold text-white">InvestGuard</span>
-          <span>— Hefty Hacks 2026 Finance × Trading Track</span>
+        {/* Compliance Notice */}
+        <div className="flex items-start gap-3 max-w-3xl">
+          <Info className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+          <p className="leading-relaxed text-slate-400 text-[11px]">
+            <strong className="text-slate-300">Regulatory Disclaimer: </strong>
+            {REGULATORY_DISCLAIMER}
+          </p>
         </div>
-        <div className="flex items-center gap-6 text-slate-400">
-          <button onClick={() => onNavigate('dashboard')} className="hover:text-white transition">Dashboard</button>
-          <button onClick={() => onNavigate('analysis')} className="hover:text-white transition">Behavior Analysis</button>
-          <button onClick={() => onNavigate('journal')} className="hover:text-white transition">Journal</button>
-          <button onClick={() => onNavigate('learn')} className="hover:text-white transition">Learn</button>
-          <button onClick={() => onNavigate('docs')} className="hover:text-white transition">Project Report</button>
+
+        {/* Project Meta */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-shrink-0">
+          <span className="flex items-center gap-1 text-slate-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            InvestGuard Core v1.0
+          </span>
+          <span>•</span>
+          <span className="text-slate-400">Hefty Hacks 2026</span>
         </div>
-      </div>
-      <div className="max-w-7xl mx-auto mt-4 pt-4 border-t border-slate-800/40 text-slate-500 text-[11px] text-center md:text-left">
-        InvestGuard analyzes portfolio allocations and transaction logs to highlight behavioral antipatterns. It does not provide buy/sell signals, guarantee profits, or diagnose psychological conditions.
       </div>
     </footer>
   );

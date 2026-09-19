@@ -1,219 +1,276 @@
+// ============================================================
+// InvestGuard — Portfolio & Holdings Breakdown
+// Live position monitoring, sector diversification weights,
+// and automated concentration risk indicators.
+// ============================================================
+
 import React, { useState } from 'react';
-import { Holding } from '../types';
-import { Search, Filter, AlertTriangle, ArrowUpDown, PieChart, Layers } from 'lucide-react';
-import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  PieChart,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  ShieldAlert,
+  Search,
+  BookOpen,
+  ArrowLeftRight,
+  Sparkles,
+  Info,
+  CheckCircle2,
+} from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { formatINR, formatPercent } from '../lib/formatters';
 
-const COLORS = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+interface PortfolioPageProps {
+  onNavigate: (page: string) => void;
+}
 
-export const PortfolioPage: React.FC<{ holdings: Holding[] }> = ({ holdings }) => {
-  const [search, setSearch] = useState('');
-  const [sectorFilter, setSectorFilter] = useState('ALL');
-  const [sortKey, setSortKey] = useState<'current_value' | 'portfolio_percent' | 'gain_loss_percent'>('current_value');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+export const PortfolioPage: React.FC<PortfolioPageProps> = ({ onNavigate }) => {
+  const { holdings, detectionConfig } = useStore();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSector, setSelectedSector] = useState<string>('ALL');
 
-  const totalPortfolioVal = holdings.reduce((sum, h) => sum + (h.quantity * h.current_price), 0);
+  // Aggregates
+  const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+  const totalInvested = holdings.reduce((sum, h) => sum + h.investedValue, 0);
+  const totalPnl = totalValue - totalInvested;
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
-  // Check for high concentration
-  const concentratedHolding = holdings.find((h) => {
-    const pct = ((h.quantity * h.current_price) / (totalPortfolioVal || 1)) * 100;
-    return pct >= 30;
+  // Sector breakdown
+  const sectorMap: Record<string, { value: number; count: number }> = {};
+  for (const h of holdings) {
+    if (!sectorMap[h.sector]) {
+      sectorMap[h.sector] = { value: 0, count: 0 };
+    }
+    sectorMap[h.sector].value += h.currentValue;
+    sectorMap[h.sector].count += 1;
+  }
+
+  const sectors = Object.keys(sectorMap);
+  const sectorColors = [
+    '#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6',
+  ];
+
+  // Filtering
+  const filteredHoldings = holdings.filter(h => {
+    const matchesSearch =
+      h.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      h.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSector = selectedSector === 'ALL' || h.sector === selectedSector;
+    return matchesSearch && matchesSector;
   });
 
-  const sectors = ['ALL', ...Array.from(new Set(holdings.map((h) => h.sector)))];
-
-  const filteredHoldings = holdings
-    .filter((h) => {
-      const matchSearch = h.symbol.toLowerCase().includes(search.toLowerCase()) || h.company.toLowerCase().includes(search.toLowerCase());
-      const matchSector = sectorFilter === 'ALL' || h.sector === sectorFilter;
-      return matchSearch && matchSector;
-    })
-    .sort((a, b) => {
-      let valA = a[sortKey];
-      let valB = b[sortKey];
-      return sortOrder === 'desc' ? valB - valA : valA - valB;
-    });
-
-  const pieData = holdings.map((h) => ({
-    name: h.symbol,
-    value: Math.round((h.quantity * h.current_price) / (totalPortfolioVal || 1) * 1000) / 10
-  }));
-
-  const handleSort = (key: 'current_value' | 'portfolio_percent' | 'gain_loss_percent') => {
-    if (sortKey === key) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortOrder('desc');
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Concentration Warning Banner */}
-      {concentratedHolding && (
-        <div className="p-4 rounded-xl bg-amber-950/60 border border-amber-800/60 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-bold text-amber-200">
-              Concentration Risk Detected: {concentratedHolding.symbol}
-            </div>
-            <div className="text-xs text-amber-300/90 mt-0.5">
-              {((concentratedHolding.quantity * concentratedHolding.current_price) / (totalPortfolioVal || 1) * 100).toFixed(1)}% of your portfolio is currently allocated to {concentratedHolding.company}. Consider whether this single holding matches your intended strategy.
-            </div>
+    <div className="space-y-6 pb-12">
+      {/* Portfolio Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Total Value */}
+        <div className="p-5 rounded-2xl glass-card">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            Total Portfolio Value
+          </span>
+          <div className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+            {formatINR(totalValue)}
+          </div>
+          <div className="flex items-center gap-1.5 mt-2">
+            {totalPnl >= 0 ? (
+              <span className="text-xs font-semibold text-emerald-400 flex items-center">
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                +{formatINR(totalPnl)} ({formatPercent(totalPnlPct)})
+              </span>
+            ) : (
+              <span className="text-xs font-semibold text-rose-400 flex items-center">
+                <ArrowDownRight className="w-3.5 h-3.5" />
+                {formatINR(totalPnl)} ({formatPercent(totalPnlPct)})
+              </span>
+            )}
+            <span className="text-[11px] text-slate-400">Total Unrealized P&L</span>
           </div>
         </div>
-      )}
 
-      {/* Top Controls & Search */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-          <input
-            type="text"
-            placeholder="Search by symbol or company..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 text-xs text-white rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:border-purple-500"
-          />
+        {/* Invested Capital */}
+        <div className="p-5 rounded-2xl glass-card">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            Invested Capital
+          </span>
+          <div className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+            {formatINR(totalInvested)}
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            Cost basis across {holdings.length} active positions
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-slate-400" />
+        {/* Concentration Alert */}
+        <div className="p-5 rounded-2xl glass-card">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">
+            Concentration Benchmark
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl lg:text-3xl font-extrabold text-indigo-400 tracking-tight">
+              {detectionConfig.concentrationThreshold}%
+            </span>
+            <span className="text-xs text-slate-400">Max Single Position Target</span>
+          </div>
+          <p className="text-xs text-slate-400 mt-2">
+            {holdings.filter(h => h.allocationPercent >= detectionConfig.concentrationThreshold).length} stock(s) exceed benchmark
+          </p>
+        </div>
+      </div>
+
+      {/* Sector Allocation Visual Bar */}
+      <div className="p-6 rounded-2xl glass-card space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white tracking-tight">
+              Sector Allocation Distribution
+            </h3>
+            <p className="text-xs text-slate-400">
+              Diversification spread across simulated market sectors
+            </p>
+          </div>
+        </div>
+
+        {/* Multi-color segment bar */}
+        <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden flex">
+          {sectors.map((sec, idx) => {
+            const pct = totalValue > 0 ? (sectorMap[sec].value / totalValue) * 100 : 0;
+            const color = sectorColors[idx % sectorColors.length];
+            return (
+              <div
+                key={sec}
+                title={`${sec}: ${pct.toFixed(1)}%`}
+                style={{ width: `${pct}%`, backgroundColor: color }}
+                className="h-full transition-all duration-300 hover:opacity-80"
+              />
+            );
+          })}
+        </div>
+
+        {/* Sector Legend */}
+        <div className="flex flex-wrap gap-4 pt-1">
+          {sectors.map((sec, idx) => {
+            const pct = totalValue > 0 ? (sectorMap[sec].value / totalValue) * 100 : 0;
+            const color = sectorColors[idx % sectorColors.length];
+            return (
+              <div key={sec} className="flex items-center gap-2 text-xs">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                <span className="text-slate-300 font-medium">{sec}</span>
+                <span className="text-slate-400 font-mono">({pct.toFixed(1)}%)</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Holdings Table */}
+      <div className="p-6 rounded-2xl glass-card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-white tracking-tight">
+              Active Holdings Log ({filteredHoldings.length})
+            </h3>
+            <p className="text-xs text-slate-400">
+              Evaluated in real-time against simulated daily price feeds
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search ticker or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="text-xs bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-60"
+              />
+            </div>
+
+            {/* Sector filter */}
             <select
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-xs text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-purple-500"
+              value={selectedSector}
+              onChange={(e) => setSelectedSector(e.target.value)}
+              className="text-xs bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
             >
-              {sectors.map((sec) => (
-                <option key={sec} value={sec}>{sec === 'ALL' ? 'All Sectors' : sec}</option>
+              <option value="ALL">All Sectors</option>
+              {sectors.map(s => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
         </div>
-      </div>
 
-      {/* Portfolio Breakdown Charts & Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5">
-          <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-            <PieChart className="w-4 h-4 text-purple-400" />
-            Holding Allocation Weights (%)
-          </h3>
-          <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsPie>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  innerRadius={50}
-                  paddingAngle={3}
-                >
-                  {pieData.map((_, idx) => (
-                    <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0d1b2e', borderColor: '#334155', borderRadius: '8px', color: '#fff' }} />
-              </RechartsPie>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-bold text-white mb-2">Portfolio Metrics</h3>
-            <div className="space-y-4 mt-4 text-xs">
-              <div>
-                <span className="text-slate-400">Total Portfolio Value:</span>
-                <div className="text-xl font-bold text-white mt-0.5">₹{totalPortfolioVal.toLocaleString('en-IN')}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">Total Number of Holdings:</span>
-                <div className="text-base font-semibold text-slate-200 mt-0.5">{holdings.length} Assets</div>
-              </div>
-              <div>
-                <span className="text-slate-400">Largest Holding:</span>
-                <div className="text-sm font-semibold text-purple-300 mt-0.5">
-                  {concentratedHolding ? `${concentratedHolding.symbol} (${((concentratedHolding.quantity * concentratedHolding.current_price) / (totalPortfolioVal || 1) * 100).toFixed(1)}%)` : 'Balanced'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Holdings Table */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="p-5 border-b border-slate-800">
-          <h3 className="text-base font-bold text-white">Portfolio Holdings Table</h3>
-        </div>
-
+        {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 uppercase font-semibold border-b border-slate-800">
-              <tr>
-                <th className="p-4">Symbol / Company</th>
-                <th className="p-4">Sector</th>
-                <th className="p-4 text-right">Quantity</th>
-                <th className="p-4 text-right">Avg Buy Price</th>
-                <th className="p-4 text-right">Current Price</th>
-                <th className="p-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('current_value')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Current Value</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="p-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('gain_loss_percent')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Gain / Loss</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
-                <th className="p-4 text-right cursor-pointer hover:text-white" onClick={() => handleSort('portfolio_percent')}>
-                  <div className="flex items-center justify-end gap-1">
-                    <span>Portfolio %</span>
-                    <ArrowUpDown className="w-3 h-3" />
-                  </div>
-                </th>
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 font-semibold">
+                <th className="pb-3 pl-2">Asset / Ticker</th>
+                <th className="pb-3 text-right">Quantity</th>
+                <th className="pb-3 text-right">Avg Buy</th>
+                <th className="pb-3 text-right">Current Price</th>
+                <th className="pb-3 text-right">Market Value</th>
+                <th className="pb-3 text-right">Portfolio Share</th>
+                <th className="pb-3 text-right">Unrealized P&L</th>
+                <th className="pb-3 text-right pr-2">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filteredHoldings.map((h) => {
-                const val = h.quantity * h.current_price;
-                const gl = val - (h.quantity * h.average_buy_price);
-                const gl_pct = (gl / (h.quantity * h.average_buy_price) * 100);
-                const pct = (val / (totalPortfolioVal || 1)) * 100;
-                const isConcentrated = pct >= 30;
+                const isConcentrated = h.allocationPercent >= detectionConfig.concentrationThreshold;
 
                 return (
-                  <tr key={h.id} className="hover:bg-slate-800/40 transition">
-                    <td className="p-4">
-                      <div className="font-bold text-white flex items-center gap-2">
-                        <span>{h.symbol}</span>
+                  <tr key={h.id} className="hover:bg-slate-800/30 transition-colors">
+                    <td className="py-3 pl-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-mono font-bold text-xs bg-slate-800 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">
+                          {h.ticker}
+                        </span>
+                        <div>
+                          <div className="font-semibold text-slate-100">{h.name}</div>
+                          <div className="text-[10px] text-slate-400">{h.sector}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-mono text-slate-300">{h.quantity}</td>
+                    <td className="py-3 text-right font-mono text-slate-300">{formatINR(h.avgBuyPrice)}</td>
+                    <td className="py-3 text-right font-mono text-slate-200 font-semibold">{formatINR(h.currentPrice)}</td>
+                    <td className="py-3 text-right font-mono font-bold text-white">{formatINR(h.currentValue)}</td>
+                    <td className="py-3 text-right">
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <span className="font-mono text-slate-300">{h.allocationPercent.toFixed(1)}%</span>
                         {isConcentrated && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">
-                            High Conc.
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-0.5">
+                            <ShieldAlert className="w-2.5 h-2.5 text-amber-400" />
+                            Overweight
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400">{h.company}</div>
                     </td>
-                    <td className="p-4 text-slate-300">{h.sector}</td>
-                    <td className="p-4 text-right font-mono">{h.quantity}</td>
-                    <td className="p-4 text-right font-mono">₹{h.average_buy_price}</td>
-                    <td className="p-4 text-right font-mono font-semibold text-white">₹{h.current_price}</td>
-                    <td className="p-4 text-right font-mono font-bold text-white">₹{val.toLocaleString('en-IN')}</td>
-                    <td className={`p-4 text-right font-mono font-semibold ${gl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {gl >= 0 ? '+' : ''}₹{gl.toLocaleString('en-IN')} ({gl_pct >= 0 ? '+' : ''}{gl_pct.toFixed(2)}%)
-                    </td>
-                    <td className="p-4 text-right font-mono font-bold">
-                      <span className={isConcentrated ? 'text-amber-400 font-extrabold' : 'text-slate-200'}>
-                        {pct.toFixed(1)}%
+                    <td className="py-3 text-right font-mono font-semibold">
+                      <span className={h.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                        {h.unrealizedPnl >= 0 ? '+' : ''}{formatINR(h.unrealizedPnl)} ({formatPercent(h.unrealizedPnlPercent)})
                       </span>
+                    </td>
+                    <td className="py-3 text-right pr-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => onNavigate('transactions')}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                          title="View Trade History"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onNavigate('journal')}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                          title="Open in Journal"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

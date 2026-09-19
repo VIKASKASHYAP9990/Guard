@@ -1,299 +1,468 @@
-import React from 'react';
-import { PortfolioSummary, BehaviorAnalysisResult, Alert, Transaction } from '../types';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { Shield, TrendingUp, AlertTriangle, Layers, Activity, ArrowUpRight, ArrowDownRight, Clock, ChevronRight } from 'lucide-react';
+// ============================================================
+// InvestGuard — Executive Behavioral Dashboard
+// Holistic overview of behavioral health, active alerts,
+// portfolio allocation, and quick scenario triggers.
+// ============================================================
+
+import React, { useState } from 'react';
+import {
+  Activity,
+  AlertTriangle,
+  TrendingUp,
+  PieChart,
+  ShieldCheck,
+  ArrowUpRight,
+  ArrowDownRight,
+  Sparkles,
+  RefreshCw,
+  Brain,
+  HelpCircle,
+  Clock,
+  CheckCircle2,
+  ExternalLink,
+  ChevronRight,
+  BarChart3,
+  Sliders,
+} from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { formatINR, formatPercent, getHealthScoreColor, getAlertSeverityBadge } from '../lib/formatters';
+import { AIExplanationPanel } from '../components/UI/AIExplanationPanel';
+import { BehavioralAlert } from '../types';
+import { SCENARIOS } from '../lib/mockData';
 
 interface DashboardProps {
-  portfolio: PortfolioSummary | null;
-  analysis: BehaviorAnalysisResult | null;
-  alerts: Alert[];
-  transactions: Transaction[];
-  onNavigate: (route: string) => void;
+  onNavigate: (page: string) => void;
 }
 
-const COLORS = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const {
+    holdings,
+    transactions,
+    report,
+    alerts,
+    isDemoMode,
+    activeScenario,
+    setScenario,
+    runAnalysis,
+    isAnalyzing,
+    updateAlertStatus,
+  } = useStore();
 
-export const Dashboard: React.FC<DashboardProps> = ({
-  portfolio,
-  analysis,
-  alerts,
-  transactions,
-  onNavigate,
-}) => {
-  const chartData = [
-    { day: 'Mon', value: 118000 },
-    { day: 'Tue', value: 119500 },
-    { day: 'Wed', value: 121000 },
-    { day: 'Thu', value: 120200 },
-    { day: 'Fri', value: 123200 },
-    { day: 'Sat', value: 123950 },
-    { day: 'Sun', value: portfolio ? portfolio.portfolio_value : 124500 },
-  ];
+  const [selectedAlert, setSelectedAlert] = useState<BehavioralAlert | null>(null);
 
-  const behavioralMatrix = analysis?.behavioral_matrix || {
-    'FOMO-like Buying': 'Moderate',
-    'Panic Selling': 'Low',
-    'Overtrading': 'High',
-    'Concentration': 'High',
-    'Loss Aversion': 'Moderate',
-    'Market Timing': 'High'
-  };
+  // Portfolio aggregates
+  const totalPortfolioValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
+  const totalInvestedValue = holdings.reduce((sum, h) => sum + h.investedValue, 0);
+  const totalUnrealizedPnl = totalPortfolioValue - totalInvestedValue;
+  const totalPnlPercent = totalInvestedValue > 0 ? (totalUnrealizedPnl / totalInvestedValue) * 100 : 0;
 
-  const getSeverityBadge = (level: string) => {
-    switch (level.toLowerCase()) {
-      case 'high':
-        return 'bg-rose-950/80 text-rose-300 border-rose-800/60';
-      case 'moderate':
-        return 'bg-amber-950/80 text-amber-300 border-amber-800/60';
-      default:
-        return 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60';
-    }
-  };
+  const healthColor = getHealthScoreColor(report.behavioralScore);
+  const activeAlerts = alerts.filter(a => a.status !== 'DISMISSED');
+  const recentAlerts = activeAlerts.slice(0, 4);
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner Alert if high concentration or overtrading */}
-      {analysis?.ml_analysis.is_anomaly && (
-        <div className="p-4 rounded-xl bg-purple-950/50 border border-purple-800/50 flex items-start gap-3">
-          <Activity className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="text-sm font-semibold text-purple-200">
-              Isolation Forest ML Anomaly Signal Detected
+    <div className="space-y-6 pb-12">
+      {/* Top Banner / Demo Scenario Switcher */}
+      {isDemoMode && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 border border-indigo-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-amber-400" />
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              {analysis.ml_analysis.explanation}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+                  Interactive Demo Mode
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Active Simulation
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                Switch scenario presets to see the pure-function behavioral engine evaluate different biases instantly.
+              </p>
+            </div>
           </div>
-          <button
-            onClick={() => onNavigate('analysis')}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition shrink-0"
-          >
-            View Details
-          </button>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+            {SCENARIOS.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => setScenario(s.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeScenario === s.id
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400'
+                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
+                }`}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Metrics Row */}
+      {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="text-xs font-medium text-slate-400">Total Portfolio Value</div>
-          <div className="text-2xl font-bold text-white mt-1">
-            ₹{portfolio ? portfolio.portfolio_value.toLocaleString('en-IN') : '1,24,500'}
-          </div>
-          <div className="flex items-center gap-1 text-xs text-emerald-400 mt-2 font-medium">
-            <ArrowUpRight className="w-4 h-4" />
-            <span>+₹{portfolio ? portfolio.todays_change.toLocaleString('en-IN') : '1,250'} (+1.02% Today)</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="text-xs font-medium text-slate-400">Total Unrealized Gain</div>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">
-            +₹{portfolio ? portfolio.total_gain_loss.toLocaleString('en-IN') : '18,450'}
-          </div>
-          <div className="text-xs text-slate-400 mt-2 font-medium">
-            +{(portfolio ? portfolio.total_gain_loss_percent : 17.4).toFixed(1)}% Overall Return
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="text-xs font-medium text-slate-400">Active Asset Holdings</div>
-          <div className="text-2xl font-bold text-white mt-1">
-            {portfolio ? portfolio.holdings_count : 5} Assets
-          </div>
-          <div className="text-xs text-purple-400 mt-2 font-medium flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5" />
-            <span>Max concentration: NVDA (41.2%)</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="text-xs font-medium text-slate-400">Behavioral Alerts</div>
-          <div className="text-2xl font-bold text-amber-400 mt-1">
-            {alerts.filter(a => a.status === 'Unread').length} Alerts
-          </div>
-          <div className="text-xs text-slate-400 mt-2 font-medium flex items-center gap-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Overtrading & Concentration</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Portfolio Valuation Trend */}
-        <div className="lg:col-span-2 p-5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-base font-bold text-white">Portfolio Valuation Trajectory</h3>
-              <p className="text-xs text-slate-400">7-Day Portfolio performance trajectory</p>
+        {/* 1. Behavioral Health Score */}
+        <div className="p-5 rounded-2xl glass-card flex flex-col justify-between relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Behavioral Health
+            </span>
+            <div className={`p-2 rounded-xl ${healthColor.bg} border ${healthColor.border}`}>
+              <Brain className={`w-4 h-4 ${healthColor.text}`} />
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-mono">7D</span>
           </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#7c3aed" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} domain={['auto', 'auto']} tickFormatter={(v) => `₹${v/1000}k`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0d1b2e', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
-                  formatter={(val: number) => [`₹${val.toLocaleString('en-IN')}`, 'Portfolio Value']}
-                />
-                <Area type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={2.5} fillOpacity={1} fill="url(#colorVal)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-3xl font-extrabold tracking-tight ${healthColor.text}`}>
+                {report.behavioralScore}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">/ 100</span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1 font-medium">
+              Rating: <strong className={healthColor.text}>{healthColor.label}</strong>
+            </p>
+          </div>
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 rounded-full ${
+                report.behavioralScore >= 75 ? 'bg-emerald-500' : report.behavioralScore >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+              }`}
+              style={{ width: `${report.behavioralScore}%` }}
+            />
           </div>
         </div>
 
-        {/* Sector Exposure Breakdown */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col justify-between">
+        {/* 2. Total Portfolio Value */}
+        <div className="p-5 rounded-2xl glass-card flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Portfolio Value
+            </span>
+            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <PieChart className="w-4 h-4" />
+            </div>
+          </div>
           <div>
-            <h3 className="text-base font-bold text-white">Sector Allocation</h3>
-            <p className="text-xs text-slate-400 mb-4">Portfolio asset concentration</p>
+            <span className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+              {formatINR(totalPortfolioValue)}
+            </span>
+            <div className="flex items-center gap-1.5 mt-1">
+              {totalUnrealizedPnl >= 0 ? (
+                <span className="text-xs font-semibold text-emerald-400 flex items-center">
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  +{formatINR(totalUnrealizedPnl)} ({formatPercent(totalPnlPercent)})
+                </span>
+              ) : (
+                <span className="text-xs font-semibold text-rose-400 flex items-center">
+                  <ArrowDownRight className="w-3.5 h-3.5" />
+                  {formatINR(totalUnrealizedPnl)} ({formatPercent(totalPnlPercent)})
+                </span>
+              )}
+            </div>
           </div>
-          <div className="h-52 w-full flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={portfolio?.sector_breakdown || [
-                    { sector: 'Semiconductors', percentage: 41.2 },
-                    { sector: 'Technology', percentage: 37.8 },
-                    { sector: 'Consumer Discretionary', percentage: 10.5 },
-                    { sector: 'Automotive', percentage: 10.0 }
-                  ]}
-                  dataKey="percentage"
-                  nameKey="sector"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={75}
-                  innerRadius={45}
-                  paddingAngle={3}
-                >
-                  {(portfolio?.sector_breakdown || [1,2,3,4]).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0d1b2e', borderColor: '#334155', borderRadius: '8px', color: '#fff' }}
-                  formatter={(val: number) => [`${val}%`, 'Allocation']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-1.5 mt-2">
-            {(portfolio?.sector_breakdown || []).map((sec, idx) => (
-              <div key={sec.sector} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                  <span className="text-slate-300">{sec.sector}</span>
-                </div>
-                <span className="font-semibold text-white">{sec.percentage}%</span>
-              </div>
-            ))}
-          </div>
+          <p className="text-[11px] text-slate-400 mt-3">
+            Across {holdings.length} simulated positions
+          </p>
         </div>
-      </div>
 
-      {/* Behavioral Overview Risk Matrix */}
-      <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-        <div className="flex items-center justify-between mb-4">
+        {/* 3. Active Behavioral Alerts */}
+        <div className="p-5 rounded-2xl glass-card flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Observed Signals
+            </span>
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+          </div>
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Shield className="w-4 h-4 text-purple-400" />
-              Behavioral Risk Signal Matrix
-            </h3>
-            <p className="text-xs text-slate-400">Current behavioral indicators evaluated across 6 core antipatterns</p>
+            <span className="text-3xl font-extrabold text-white tracking-tight">
+              {activeAlerts.length}
+            </span>
+            <p className="text-xs text-slate-300 mt-1">
+              {activeAlerts.filter(a => a.severity === 'HIGH').length} High • {activeAlerts.filter(a => a.severity === 'MODERATE').length} Moderate
+            </p>
           </div>
           <button
-            onClick={() => onNavigate('analysis')}
-            className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-1 font-medium"
+            onClick={() => onNavigate('alerts')}
+            className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mt-3 group"
           >
-            <span>Full Pipeline Details</span>
-            <ChevronRight className="w-4 h-4" />
+            Review all alerts <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {Object.entries(behavioralMatrix).map(([pattern, severity]) => (
-            <div key={pattern} className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col justify-between">
-              <div className="text-xs font-semibold text-slate-300 leading-tight mb-2">{pattern}</div>
-              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-md border text-center ${getSeverityBadge(severity)}`}>
-                {severity} Risk
+        {/* 4. Diversification Score */}
+        <div className="p-5 rounded-2xl glass-card flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Diversification Index
+            </span>
+            <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-purple-400 tracking-tight">
+                {report.diversificationScore}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">/ 100</span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              {report.diversificationScore >= 70 ? 'Well Balanced' : 'Moderate Concentration'}
+            </p>
+          </div>
+          <div className="w-full bg-slate-800/80 h-1.5 rounded-full mt-4 overflow-hidden">
+            <div
+              className="h-full bg-purple-500 rounded-full transition-all duration-500"
+              style={{ width: `${report.diversificationScore}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: 6 Behavioral Indicators & Recent Observations */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left 2 Cols: 6 Behavioral Indicators Matrix */}
+        <div className="lg:col-span-2 p-6 rounded-2xl glass-card space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  Behavioral Bias Indicator Matrix
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Continuous rule-based evaluation across 6 emotional pattern vectors
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onNavigate('behavior')}
+              className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 group"
+            >
+              Deep Dive <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {report.indicators.map((ind) => {
+              const levelColor =
+                ind.level === 'HIGH'
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  : ind.level === 'MODERATE'
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  : ind.level === 'LOW'
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                  : 'bg-slate-800 text-slate-400 border-slate-700';
+
+              return (
+                <div
+                  key={ind.pattern}
+                  className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700/80 transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-bold text-slate-200">
+                      {ind.name}
+                    </span>
+                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${levelColor}`}>
+                      {ind.level}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                    {ind.description}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[11px]">
+                    <span className="text-slate-400 font-medium">
+                      {ind.alertCount} signal(s) triggered
+                    </span>
+                    <button
+                      onClick={() => onNavigate('behavior')}
+                      className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-0.5 text-[11px]"
+                    >
+                      Details & Rules
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right Col: Recent Behavioral Observations */}
+        <div className="p-6 rounded-2xl glass-card space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  Recent Observations
+                </h3>
+              </div>
+              <span className="text-xs text-slate-400">
+                {activeAlerts.length} Total
               </span>
             </div>
-          ))}
+
+            {recentAlerts.length === 0 ? (
+              <div className="p-8 text-center bg-slate-900/40 rounded-xl border border-slate-800/60 space-y-2">
+                <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
+                <p className="text-xs font-semibold text-slate-300">
+                  No Active Behavioral Alerts
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Your trading data aligns with established disciplined benchmarks.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentAlerts.map((alert) => {
+                  const sev = getAlertSeverityBadge(alert.severity);
+                  return (
+                    <div
+                      key={alert.id}
+                      className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/90 space-y-2.5 hover:border-indigo-500/30 transition-all"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sev.bg} ${sev.text} ${sev.border}`}>
+                            {sev.label}
+                          </span>
+                          <h4 className="text-xs font-bold text-white pt-1">
+                            {alert.title}
+                          </h4>
+                        </div>
+                        {alert.ticker && (
+                          <span className="text-[10px] font-mono font-bold bg-slate-800 text-indigo-300 px-1.5 py-0.5 rounded border border-slate-700">
+                            {alert.ticker}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-slate-300 leading-relaxed font-mono line-clamp-2">
+                        {alert.evidence}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[10px] text-slate-400">
+                          {alert.detectedAt}
+                        </span>
+                        <button
+                          onClick={() => setSelectedAlert(alert)}
+                          className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                        >
+                          <Brain className="w-3 h-3 text-purple-400" />
+                          View AI Explanation
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 border-t border-slate-800/80">
+            <button
+              onClick={() => onNavigate('alerts')}
+              className="w-full py-2 px-3 rounded-xl bg-indigo-600/15 hover:bg-indigo-600/25 text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all text-center"
+            >
+              Open Full Alert Center
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Feeds Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Alerts Feed */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              Recent Smart Alerts
+      {/* Bottom Section: Holdings Snapshot & Quick Trade Action */}
+      <div className="p-6 rounded-2xl glass-card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-white tracking-tight">
+              Top Portfolio Positions
             </h3>
-            <button onClick={() => onNavigate('alerts')} className="text-xs text-purple-400 hover:text-purple-300 font-medium">
-              View All ({alerts.length})
-            </button>
+            <p className="text-xs text-slate-400">
+              Monitored for concentration risks and holding period drift
+            </p>
           </div>
-          <div className="space-y-3">
-            {alerts.slice(0, 3).map((a) => (
-              <div key={a.id} className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-200">{a.title}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getSeverityBadge(a.severity)}`}>
-                    {a.severity}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">{a.evidence}</p>
-              </div>
-            ))}
-          </div>
+
+          <button
+            onClick={() => onNavigate('portfolio')}
+            className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 group"
+          >
+            View All Holdings ({holdings.length}) <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+          </button>
         </div>
 
-        {/* Recent Transactions Feed */}
-        <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Clock className="w-4 h-4 text-purple-400" />
-              Recent Trade Execution Log
-            </h3>
-            <button onClick={() => onNavigate('transactions')} className="text-xs text-purple-400 hover:text-purple-300 font-medium">
-              View All ({transactions.length})
-            </button>
-          </div>
-          <div className="space-y-3">
-            {transactions.slice(0, 3).map((t) => (
-              <div key={t.id} className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${t.type === 'BUY' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}`}>
-                      {t.type}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 font-medium">
+                <th className="pb-3 pl-2">Asset / Ticker</th>
+                <th className="pb-3 text-right">Quantity</th>
+                <th className="pb-3 text-right">Current Price</th>
+                <th className="pb-3 text-right">Market Value</th>
+                <th className="pb-3 text-right">Allocation</th>
+                <th className="pb-3 text-right pr-2">Unrealized P&L</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {holdings.slice(0, 5).map((h) => (
+                <tr key={h.id} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="py-3 pl-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-indigo-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                        {h.ticker}
+                      </span>
+                      <div>
+                        <div className="font-semibold text-slate-200">{h.name}</div>
+                        <div className="text-[10px] text-slate-400">{h.sector}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 text-right font-mono text-slate-300">{h.quantity}</td>
+                  <td className="py-3 text-right font-mono text-slate-300">{formatINR(h.currentPrice)}</td>
+                  <td className="py-3 text-right font-mono font-bold text-white">{formatINR(h.currentValue)}</td>
+                  <td className="py-3 text-right">
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="font-mono text-slate-300">{h.allocationPercent.toFixed(1)}%</span>
+                      {h.allocationPercent >= 25 && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          Concentrated
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3 text-right pr-2 font-mono font-semibold">
+                    <span className={h.unrealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      {h.unrealizedPnl >= 0 ? '+' : ''}{formatINR(h.unrealizedPnl)} ({formatPercent(h.unrealizedPnlPercent)})
                     </span>
-                    <strong className="text-xs text-white">{t.symbol}</strong>
-                    <span className="text-xs text-slate-400">({t.company})</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    {t.reason || 'Trade execution'}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-semibold text-white">₹{(t.quantity * t.price).toLocaleString('en-IN')}</div>
-                  <div className="text-[11px] text-slate-400">{t.quantity} @ ₹{t.price}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* AI Explanation Modal */}
+      {selectedAlert && (
+        <AIExplanationPanel
+          alert={selectedAlert}
+          onClose={() => setSelectedAlert(null)}
+          onNavigateToJournal={(ticker) => {
+            setSelectedAlert(null);
+            onNavigate('journal');
+          }}
+        />
+      )}
     </div>
   );
 };
